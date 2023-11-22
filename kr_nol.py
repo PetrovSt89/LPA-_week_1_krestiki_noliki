@@ -1,5 +1,5 @@
 import os
-from random import randint, choice
+import random
 
 # функция очистки игры
 def clear():
@@ -20,8 +20,8 @@ def enter_game():
             # вызов основной функции игры
             winer = game_progress()
             if winer == '':
-                print('До новых встреч!')
-                break
+                print('так и не решили кто сильнее =) сыграем еще?!')
+                continue
             if winer[0] == winer[1]:
                 print(f'машины победили человечество =) Хочешь сыграть еще?\n')
             else:
@@ -34,8 +34,8 @@ def enter_game():
 # функция случайного выбора кто чем играет
 def choise_x_o():
     x_o = ['x','o']
-    x_o_comp = choice(x_o)
-    x_o_man = 'xo'.replace(x_o_comp,'')
+    x_o_comp = random.choice(x_o)
+    x_o_man = 'o' if x_o_comp == 'x' else 'x'
     return x_o_comp, x_o_man
 
 
@@ -54,20 +54,22 @@ def print_field(field):
 
 
 # функция хода человека
-def man_step(field, base_turns):
+def man_step(base_turns):
     while True:        
         print('введи два числа от 1 до 3 через пробел - столбец и строку')
         turn = input()
-        if turn == 'q':
-            return 0
         if len(turn) != 3:
             print('ввел не в формате: <число> <число>')
         elif turn[1] != ' ':
             print('нужен пробел между числами')
         else:
             turn = turn.split()
-            turn[0] = int(turn[0])
-            turn[1] = int(turn[1])
+            if turn[0].isdigit() and turn[1].isdigit():
+                turn[0] = int(turn[0])
+                turn[1] = int(turn[1])
+            else:
+                print('введены не цыфры')
+                continue
             if turn in base_turns:
                 print('прости, но эта клетка уже использована')
             elif not 0 < turn[0] < 4 or not 0 < turn[1] < 4:
@@ -78,11 +80,20 @@ def man_step(field, base_turns):
 
 
 # функция хода компьютера
-def comp_step(field, base_turns):
+def comp_step(base_turns):
+    all_steps = [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,1],[3,2],[3,3]]
+    if base_turns ==[]:
+        steps = all_steps
+    else:
+        for i in base_turns:
+            all_steps.remove(i)
+        # steps = [all_steps.remove(i) for i in base_turns]
+        if all_steps == []:
+            clear()
+            return False
     while True:
-        turn = [randint(1,3),randint(1,3)]
-        if turn not in base_turns:
-            return turn
+        turn = random.choice(all_steps)
+        return turn
 
 
 # функция изменения поля
@@ -101,21 +112,14 @@ def check_win(field):
 
     # проверка если в строчке три одинаковых
     def triple(field):
-        x = False
-        o = False
+        x = 'x'
+        o = 'o'
         for i in field:
             if 'x' in i and i.count('x') == 3:
-                x = True
-                break
+                return x
             if 'o' in i and i.count('o') == 3:
-                o = True    
-                break
-        if x == True:
-            return 'x'
-        elif o == True:
-            return 'o'
-        else:
-            return ''
+                return o
+        return ''
 
 
     # переворот столбцов таблицы
@@ -132,39 +136,32 @@ def check_win(field):
         exp_f =[]
         for i in field:
             exp_f.append(i[::-1])
-        return exp_f
+        return diag(exp_f)
 
 
     # проверка диагонали таблицы
     def diag(field):
-        cnt =[]
+        diag_f =[]
+        fi = []
         for i in range(len(field)):
             for j in range(len(field)):
                 if i == j:
-                    cnt.append(field[i][j])
-        if cnt.count('x') == 3:
-            return 'x'
-        elif cnt.count('o') == 3:
-            return 'o'
-        else:
-            return ''
+                    fi.append(field[i][j])
+        diag_f.append(fi)
+        return diag_f
 
 
     # основные проверки
-    winer = triple(field)
+    sum_field = field + field_reverce(field) + diag(field) + revers_str(field)
+    winer = triple(sum_field)
     if winer:
         return winer
-    elif winer := triple(field_reverce(field)):
-        print(f'победил {winer}')
-        return winer
-    elif winer := diag(field):
-        print(f'победил {winer}')
-        return winer
-    else:
-        winer = diag(revers_str(field))
-        if winer:
-            print(f'победил {winer}')
-            return winer
+
+def return_append_change(turn, x_o, field, base_turns):
+    if turn == False:
+        return ''
+    base_turns.append(turn)
+    change_field(turn, x_o, field)
 
 
 # основная работа игры
@@ -174,27 +171,24 @@ def game_progress():
     print_field(field)
     base_turns = []
     x_o_comp, x_o_man = choise_x_o()
+    step = 'man'
     while True:
-        print(f'ты играешь "{x_o_man}"')
-        turn_m = man_step(field, base_turns)
-        if turn_m == 0:
-            return ''
-        base_turns.append(turn_m)
-        change_field(turn_m, x_o_man, field)
+        if step == 'man':    
+            print(f'ты играешь "{x_o_man}"')
+            turn = man_step(base_turns)
+            x_o = x_o_man
+            step = 'comp'
+        else:
+            turn = comp_step(base_turns)
+            x_o = x_o_comp
+            step = 'man'
+        return_append_change(turn, x_o, field, base_turns)
         
         winer = check_win(field)
         if winer:
             return winer, x_o_comp, x_o_man
 
-        turn_c = comp_step(field, base_turns)
-        base_turns.append(turn_c)
-        change_field(turn_c, x_o_comp, field)
 
-        winer = check_win(field)
-        if winer:
-            return winer, x_o_comp, x_o_man
-
-        
 enter_game()
 
 
